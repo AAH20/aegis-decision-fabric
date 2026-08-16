@@ -7,6 +7,6 @@ bench:
 	python3 -m adf bench
 
 run:
-	python3 -m adf run fixtures/snortml_beachhead.json fixtures/splunk_notables.json
+	python3 -m adf run fixtures/snortml_beachhead.json fixtures/splunk_notables.json fixtures/ocsf_dual_signal.json
 
 demo: test bench run

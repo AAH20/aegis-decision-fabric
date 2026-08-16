@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 from adf.bench import run_bench
 from adf.gate import set_kill_switch
-from adf.pipeline import run_paths
+from adf.pipeline import run_paths, summarize_cost
 
 
 def main() -> int:
@@ -22,10 +22,15 @@ def main() -> int:
     run_p = sub.add_parser("run", help="Run pipeline on fixture JSON files")
     run_p.add_argument("fixtures", nargs="+", type=Path)
     run_p.add_argument("--feedback-dir", type=Path, default=ROOT / "artifacts" / "feedback")
+    run_p.add_argument(
+        "--action-ledger",
+        type=Path,
+        default=ROOT / "artifacts" / "action_ledger.jsonl",
+    )
     run_p.add_argument("--kill-switch", action="store_true")
     run_p.add_argument("--json", action="store_true")
 
-    bench_p = sub.add_parser("bench", help="Run public fixture benchmark")
+    bench_p = sub.add_parser("bench", help="Run public fixture benchmark + cost sketch")
     bench_p.add_argument("--fixtures-dir", type=Path, default=ROOT / "fixtures")
     bench_p.add_argument("--out-dir", type=Path, default=ROOT / "artifacts" / "bench")
 
@@ -34,18 +39,35 @@ def main() -> int:
     if args.cmd == "run":
         if args.kill_switch:
             set_kill_switch(True)
-        results = run_paths(args.fixtures, feedback_dir=args.feedback_dir)
+        if args.action_ledger.exists():
+            args.action_ledger.unlink()
+        results = run_paths(
+            args.fixtures,
+            feedback_dir=args.feedback_dir,
+            action_ledger_path=args.action_ledger,
+        )
         payload = [r.to_dict() for r in results]
+        cost = summarize_cost(results)
         if args.json:
-            print(json.dumps(payload, indent=2))
+            print(json.dumps({"results": payload, "cost_avoidance_illustrative_usd": cost}, indent=2))
         else:
             for r in results:
                 d = r.decision
+                g = r.gate or {}
                 print(
                     f"{r.alert_id:20s} band={r.confidence['band']:6s} "
                     f"tier={r.triage['tier']:2s} decision={d['decision']:10s} "
+                    f"ml_only={str(d.get('is_ml_only')):5s} "
+                    f"gate={g.get('reason', '-'):40s} "
                     f"composite={r.confidence['composite']:.3f} {r.latency_ms:.2f}ms"
                 )
+            print(
+                f"\nillustrative cost avoidance USD: "
+                f"{cost['estimated_total_avoidance_usd']} "
+                f"(T1 {cost['estimated_t1_savings_usd']} + "
+                f"false-contain {cost['estimated_false_contain_avoidance_usd']})"
+            )
+            print("Continuous Trust / paid pilot → https://a2zsoc.com/consultation")
         return 0
 
     if args.cmd == "bench":

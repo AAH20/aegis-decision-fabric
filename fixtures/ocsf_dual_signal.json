@@ -1,0 +1,34 @@
+{
+  "events": [
+    {
+      "_adapter": "ocsf",
+      "id": "ocsf-ml-001",
+      "severity": "high",
+      "confidence_score": 92,
+      "is_ml_only": true,
+      "is_corroborated": false,
+      "finding_info": {
+        "uid": "ocsf-ml-001",
+        "title": "OCSF Learning analytic high (ML-only)",
+        "analytic": {"type_id": 4, "type": "Learning (ML/DL)"}
+      },
+      "src_endpoint": {"ip": "203.0.113.50"},
+      "dst_endpoint": {"ip": "10.0.0.9"}
+    },
+    {
+      "_adapter": "ocsf",
+      "id": "ocsf-corr-002",
+      "severity": "high",
+      "confidence_score": 88,
+      "is_ml_only": false,
+      "is_corroborated": true,
+      "finding_info": {
+        "uid": "ocsf-corr-002",
+        "title": "OCSF rule + learning corroboration",
+        "analytic": {"type_id": 1, "type": "Rule", "uid": "rule-88"}
+      },
+      "src_endpoint": {"ip": "198.51.100.20"},
+      "dst_endpoint": {"ip": "10.0.0.9"}
+    }
+  ]
+}

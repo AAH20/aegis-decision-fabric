@@ -28,7 +28,7 @@ class GateMode(str, Enum):
 
 @dataclass
 class NormalizedAlert:
-    """Vendor-neutral detection envelope (beachhead: SnortML + Splunk)."""
+    """Vendor-neutral detection envelope (beachhead: SnortML + Splunk; OCSF-aligned)."""
 
     alert_id: str
     source: str
@@ -40,6 +40,8 @@ class NormalizedAlert:
     gid: int | None = None
     src_ip: str | None = None
     dst_ip: str | None = None
+    is_ml_only: bool = False
+    is_corroborated: bool = False
     raw: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -55,6 +57,8 @@ class ConfidenceResult:
     band: str
     rationale: list[str]
     never_equate_ml_to_signature: bool = True
+    is_ml_only: bool = False
+    is_corroborated: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -81,6 +85,9 @@ class DecisionPage:
     band: str
     actions: list[str]
     evidence: list[str]
+    is_ml_only: bool = False
+    is_corroborated: bool = False
+    deny_auto_contain: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -94,8 +101,27 @@ class GateVerdict:
     mode: GateMode
     allowed: bool
     reason: str
+    alert_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["mode"] = self.mode.value
         return d
+
+
+@dataclass
+class CostAvoidanceEstimate:
+    """ICP-facing cost/ROI sketch for Continuous Trust conversations (not a quote)."""
+
+    ml_only_escalated: int
+    false_contain_avoided: int
+    t1_minutes_saved: float
+    hourly_t1_cost_usd: float
+    false_contain_incident_cost_usd: float
+    estimated_t1_savings_usd: float
+    estimated_false_contain_avoidance_usd: float
+    estimated_total_avoidance_usd: float
+    notes: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
