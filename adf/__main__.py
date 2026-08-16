@@ -10,8 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from adf.api import default_app
 from adf.bench import run_bench
 from adf.gate import set_kill_switch
+from adf.http_app import serve
 from adf.pipeline import run_paths, summarize_cost
 
 
@@ -33,6 +35,16 @@ def main() -> int:
     bench_p = sub.add_parser("bench", help="Run public fixture benchmark + cost sketch")
     bench_p.add_argument("--fixtures-dir", type=Path, default=ROOT / "fixtures")
     bench_p.add_argument("--out-dir", type=Path, default=ROOT / "artifacts" / "bench")
+
+    serve_p = sub.add_parser("serve", help="HTTP Gate/Prove API (stdlib; SIMULATE default)")
+    serve_p.add_argument("--host", default="127.0.0.1")
+    serve_p.add_argument("--port", type=int, default=8080)
+    serve_p.add_argument(
+        "--ledger",
+        type=Path,
+        default=None,
+        help="Action Ledger JSONL path (or ADF_LEDGER)",
+    )
 
     args = p.parse_args()
 
@@ -74,6 +86,10 @@ def main() -> int:
         summary = run_bench(args.fixtures_dir, args.out_dir)
         print(json.dumps(summary, indent=2))
         print(f"wrote {args.out_dir}")
+        return 0
+
+    if args.cmd == "serve":
+        serve(host=args.host, port=args.port, app=default_app(args.ledger))
         return 0
 
     return 2

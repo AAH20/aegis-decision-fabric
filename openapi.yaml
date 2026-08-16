@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: Aegis Decision Fabric Gate/Prove API
+  version: 0.2.0
+  description: >
+    Production decide/contain/ledger for Detection & Remediation Engineering.
+    ML confidence is never a signature true positive. Contain defaults to SIMULATE.
+    ALLOW requires ADF_PROVE_TOKEN and is still denied on ML-only.
+  contact:
+    url: https://a2zsoc.com/consultation
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /health:
+    get:
+      summary: Liveness
+      responses:
+        "200":
+          description: OK
+  /openapi.yaml:
+    get:
+      summary: This OpenAPI document
+      responses:
+        "200":
+          description: YAML
+  /v1/decide:
+    post:
+      summary: Normalize an alert and return Gate/Prove disposition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecideRequest"
+            examples:
+              snortml:
+                value:
+                  gid: 411
+                  snortml_score: 0.97
+                  msg: SnortML possible SQLi (ML-only)
+                  alert_id: ml-sqli-002
+                  severity: high
+      responses:
+        "200":
+          description: Decision envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionEnvelope"
+  /v1/contain:
+    post:
+      summary: Gate a contain tool (block_ip, contain_host, quarantine, fmc_block)
+      description: Default SIMULATE. ML-only is always DENY. ALLOW needs prove_token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContainRequest"
+      responses:
+        "200":
+          description: Gate verdict plus ledger_id
+        "400":
+          description: Missing event or alert_id
+  /v1/ledger/{id}:
+    get:
+      summary: Fetch Action Ledger row by ledger_id or all rows for alert_id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ledger entry or list
+        "404":
+          description: Not found
+components:
+  schemas:
+    DecideRequest:
+      type: object
+      additionalProperties: true
+      properties:
+        adapter:
+          type: string
+          enum: [auto, snort, splunk, sentinel, soar, copilot, ocsf]
+        event:
+          type: object
+          additionalProperties: true
+    ContainRequest:
+      type: object
+      properties:
+        alert_id:
+          type: string
+        event:
+          type: object
+        adapter:
+          type: string
+        tool:
+          type: string
+          default: block_ip
+        mode:
+          type: string
+          enum: [simulate, allow, deny]
+          default: simulate
+        prove_token:
+          type: string
+    DecisionEnvelope:
+      type: object
+      properties:
+        alert_id:
+          type: string
+        never_equate_ml_to_signature:
+          type: boolean
+        is_ml_only:
+          type: boolean
+        allow_auto_contain:
+          type: boolean
+        disposition:
+          type: string
+        gate:
+          type: object
+        ledger_id:
+          type: string
+        consultation:
+          type: string

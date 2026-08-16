@@ -6,6 +6,27 @@ from typing import Any, Iterable
 
 from adf.schema import NormalizedAlert, SignalClass
 
+_ML_MARKERS = (
+    "gid 411",
+    "gid:411",
+    "gid=411",
+    "generator id 411",
+    "snortml",
+    "snort ml",
+    "is_ml_only",
+    "ml-only",
+    "ml_only",
+    "dual-signal:ml-only",
+)
+_CORR_MARKERS = (
+    "is_corroborated",
+    "dual-signal:corroborated",
+    "signature and ml",
+    "signature + ml",
+    "signature plus eve",
+    "signature plus ml",
+)
+
 
 def _f(v: Any, default: float | None = None) -> float | None:
     if v is None:
@@ -143,6 +164,151 @@ def from_ocsf_finding(event: dict[str, Any]) -> NormalizedAlert:
     )
 
 
+def _blob(*parts: Any) -> str:
+    bits: list[str] = []
+    for part in parts:
+        if part is None:
+            continue
+        if isinstance(part, (dict, list)):
+            bits.append(json.dumps(part).lower())
+        else:
+            bits.append(str(part).lower())
+    return " ".join(bits)
+
+
+def _flags_from_text(blob: str) -> tuple[bool, bool]:
+    text = blob.lower()
+    is_corr = any(m in text for m in _CORR_MARKERS)
+    is_ml = (any(m in text for m in _ML_MARKERS) or "generatorid=411" in text) and not is_corr
+    return is_ml, is_corr
+
+
+def from_sentinel_incident(event: dict[str, Any]) -> NormalizedAlert:
+    """Microsoft Sentinel incident / Logic App triggerBody envelope."""
+    obj = event.get("object") if isinstance(event.get("object"), dict) else event
+    props = obj.get("properties") if isinstance(obj.get("properties"), dict) else obj
+    title = props.get("title") or event.get("title") or "sentinel_incident"
+    desc = props.get("description") or event.get("description") or ""
+    blob = _blob(title, desc, event.get("incidentText"))
+    is_ml, is_corr = _flags_from_text(blob)
+    if is_corr:
+        signal = SignalClass.COMPOSITE
+    elif is_ml:
+        signal = SignalClass.ML
+    else:
+        signal = SignalClass.SIEM_NOTABLE
+    return NormalizedAlert(
+        alert_id=str(obj.get("id") or event.get("alert_id") or event.get("id") or title)[-64:],
+        source="sentinel_incident",
+        title=str(title),
+        signal_class=signal,
+        severity=str(props.get("severity") or event.get("severity") or "medium"),
+        gid=411 if is_ml else None,
+        is_ml_only=is_ml,
+        is_corroborated=is_corr,
+        raw=event,
+    )
+
+
+def from_soar_container(event: dict[str, Any]) -> NormalizedAlert:
+    """Splunk SOAR / Phantom container or dual_signal_containment_gate input."""
+    container = event.get("container") if isinstance(event.get("container"), dict) else {}
+    title = container.get("name") or event.get("name") or event.get("title") or "soar_container"
+    blob = _blob(
+        title,
+        container.get("description"),
+        event.get("context"),
+        event.get("generator_id"),
+        event.get("classification"),
+        event.get("eve_threat_confidence"),
+        event.get("disposition"),
+    )
+    is_ml, is_corr = _flags_from_text(blob)
+    gid = event.get("generator_id") or event.get("gid")
+    try:
+        gid_i = int(gid) if gid is not None else (411 if is_ml else None)
+    except (TypeError, ValueError):
+        gid_i = 411 if is_ml else None
+    if gid_i == 411 and not is_corr:
+        is_ml = True
+    if is_corr:
+        signal = SignalClass.COMPOSITE
+    elif is_ml:
+        signal = SignalClass.ML
+    else:
+        signal = SignalClass.SIGNATURE
+    return NormalizedAlert(
+        alert_id=str(container.get("id") or event.get("alert_id") or event.get("id") or title),
+        source="soar_container",
+        title=str(title),
+        signal_class=signal,
+        severity=str(event.get("severity") or "medium"),
+        gid=gid_i,
+        is_ml_only=is_ml and not is_corr,
+        is_corroborated=is_corr,
+        raw=event,
+    )
+
+
+def from_copilot_classify(event: dict[str, Any]) -> NormalizedAlert:
+    """Security Copilot plugin classify payload (incidentText or DISPOSITION)."""
+    disp = str(event.get("DISPOSITION") or event.get("disposition") or "").strip().lower()
+    blob = _blob(event.get("incidentText"), event.get("title"), event.get("REASON"), disp)
+    is_ml, is_corr = _flags_from_text(blob)
+    if disp == "ml_only":
+        is_ml, is_corr = True, False
+    elif disp == "corroborated":
+        is_ml, is_corr = False, True
+    elif disp == "signature":
+        is_ml, is_corr = False, False
+    if is_corr:
+        signal = SignalClass.COMPOSITE
+    elif is_ml:
+        signal = SignalClass.ML
+    else:
+        signal = SignalClass.SIGNATURE if disp == "signature" else SignalClass.SIEM_NOTABLE
+    return NormalizedAlert(
+        alert_id=str(event.get("alert_id") or event.get("id") or "copilot-" + str(hash(blob) % 10_000_000)),
+        source="copilot_classify",
+        title=str(event.get("title") or event.get("incidentText") or disp or "copilot_incident")[:200],
+        signal_class=signal,
+        severity=str(event.get("severity") or "medium"),
+        gid=411 if is_ml else None,
+        is_ml_only=is_ml,
+        is_corroborated=is_corr,
+        raw=event,
+    )
+
+
+def normalize_event(event: dict[str, Any], adapter: str | None = None) -> NormalizedAlert:
+    """Route a vendor envelope onto NormalizedAlert."""
+    hinted = (adapter or event.get("_adapter") or event.get("adapter") or "").lower()
+    if hinted in {"ocsf", "ocsf_finding"}:
+        return from_ocsf_finding(event)
+    if hinted in {"splunk", "splunk_notable"}:
+        return from_splunk_notable(event)
+    if hinted in {"sentinel", "sentinel_incident"}:
+        return from_sentinel_incident(event)
+    if hinted in {"soar", "soar_container", "phantom"}:
+        return from_soar_container(event)
+    if hinted in {"copilot", "copilot_classify"}:
+        return from_copilot_classify(event)
+    if hinted in {"snort", "snort3", "snortml", "snort3_snortml"}:
+        return from_snort_snortml(event)
+
+    if "finding_info" in event:
+        return from_ocsf_finding(event)
+    if "notable" in str(event.get("search_name", "")).lower() or hinted.startswith("splunk"):
+        return from_splunk_notable(event)
+    if isinstance(event.get("object"), dict) or isinstance(event.get("properties"), dict):
+        return from_sentinel_incident(event)
+    if "incidentText" in event or "DISPOSITION" in event:
+        return from_copilot_classify(event)
+    if isinstance(event.get("container"), dict) or event.get("generator_id") is not None:
+        return from_soar_container(event)
+    return from_snort_snortml(event)
+
+
 def load_fixture(path: Path) -> list[NormalizedAlert]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(data, dict) and "events" in data:
@@ -154,13 +320,7 @@ def load_fixture(path: Path) -> list[NormalizedAlert]:
 
     out: list[NormalizedAlert] = []
     for ev in events:
-        src = (ev.get("_adapter") or ev.get("adapter") or "").lower()
-        if src in {"ocsf", "ocsf_finding"} or "finding_info" in ev:
-            out.append(from_ocsf_finding(ev))
-        elif src in {"splunk", "splunk_notable"} or "notable" in str(ev.get("search_name", "")).lower():
-            out.append(from_splunk_notable(ev))
-        else:
-            out.append(from_snort_snortml(ev))
+        out.append(normalize_event(ev))
     return out
 
 
