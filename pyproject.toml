@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aegis-decision-fabric"
+version = "0.1.0"
+description = "Vendor-neutral Detection & Remediation Engineering fabric (SnortML + Splunk beachhead)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ahmed Hassan", email = "th3reality72@gmail.com" }]
+
+[project.urls]
+Homepage = "https://a2zsoc.com"
+Repository = "https://github.com/AAH20/aegis-decision-fabric"
+
+[project.scripts]
+adf = "adf.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["adf*"]

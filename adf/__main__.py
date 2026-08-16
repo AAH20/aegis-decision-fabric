@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from adf.bench import run_bench
+from adf.gate import set_kill_switch
+from adf.pipeline import run_paths
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(description="Aegis Decision Fabric — Detection & Remediation CLI")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    run_p = sub.add_parser("run", help="Run pipeline on fixture JSON files")
+    run_p.add_argument("fixtures", nargs="+", type=Path)
+    run_p.add_argument("--feedback-dir", type=Path, default=ROOT / "artifacts" / "feedback")
+    run_p.add_argument("--kill-switch", action="store_true")
+    run_p.add_argument("--json", action="store_true")
+
+    bench_p = sub.add_parser("bench", help="Run public fixture benchmark")
+    bench_p.add_argument("--fixtures-dir", type=Path, default=ROOT / "fixtures")
+    bench_p.add_argument("--out-dir", type=Path, default=ROOT / "artifacts" / "bench")
+
+    args = p.parse_args()
+
+    if args.cmd == "run":
+        if args.kill_switch:
+            set_kill_switch(True)
+        results = run_paths(args.fixtures, feedback_dir=args.feedback_dir)
+        payload = [r.to_dict() for r in results]
+        if args.json:
+            print(json.dumps(payload, indent=2))
+        else:
+            for r in results:
+                d = r.decision
+                print(
+                    f"{r.alert_id:20s} band={r.confidence['band']:6s} "
+                    f"tier={r.triage['tier']:2s} decision={d['decision']:10s} "
+                    f"composite={r.confidence['composite']:.3f} {r.latency_ms:.2f}ms"
+                )
+        return 0
+
+    if args.cmd == "bench":
+        summary = run_bench(args.fixtures_dir, args.out_dir)
+        print(json.dumps(summary, indent=2))
+        print(f"wrote {args.out_dir}")
+        return 0
+
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

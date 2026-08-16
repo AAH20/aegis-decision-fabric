@@ -1,0 +1,41 @@
+{
+  "events": [
+    {
+      "alert_id": "sig-sqli-001",
+      "gid": 1,
+      "sid": "1:1000001",
+      "msg": "SQL Injection attempt (signature)",
+      "severity": "high",
+      "src_addr": "203.0.113.10",
+      "dst_addr": "10.0.0.5"
+    },
+    {
+      "alert_id": "ml-sqli-002",
+      "gid": 411,
+      "snortml_score": 0.97,
+      "msg": "SnortML possible SQLi (ML-only)",
+      "severity": "high",
+      "src_addr": "203.0.113.11",
+      "dst_addr": "10.0.0.5"
+    },
+    {
+      "alert_id": "corr-003",
+      "gid": 1,
+      "sid": "1:1000002",
+      "ml_score": 0.91,
+      "msg": "XSS variant (signature + ML corroboration)",
+      "severity": "high",
+      "src_addr": "198.51.100.7",
+      "dst_addr": "10.0.0.8"
+    },
+    {
+      "alert_id": "ml-low-004",
+      "gid": 411,
+      "snortml_score": 0.42,
+      "msg": "SnortML low-confidence noise",
+      "severity": "low",
+      "src_addr": "192.0.2.4",
+      "dst_addr": "10.0.0.5"
+    }
+  ]
+}

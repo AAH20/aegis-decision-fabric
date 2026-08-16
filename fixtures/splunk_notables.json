@@ -1,0 +1,24 @@
+{
+  "events": [
+    {
+      "_adapter": "splunk_notable",
+      "event_id": "notable-1001",
+      "search_name": "Risk - Notable - Brute Force Detected",
+      "urgency": "high",
+      "risk_score": 80,
+      "src": "10.1.2.3",
+      "dest": "10.1.2.50",
+      "rule_id": "risk_brute_force"
+    },
+    {
+      "_adapter": "splunk_notable",
+      "event_id": "notable-1002",
+      "search_name": "Threat - Low Risk Anomaly",
+      "urgency": "low",
+      "risk_score": 15,
+      "src": "10.1.2.9",
+      "dest": "10.1.2.50",
+      "rule_id": "risk_anomaly_low"
+    }
+  ]
+}
