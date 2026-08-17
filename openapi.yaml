@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Aegis Decision Fabric Gate/Prove API
-  version: 0.2.0
+  version: 0.3.0
   description: >
     Production decide/contain/ledger for Detection & Remediation Engineering.
     ML confidence is never a signature true positive. Contain defaults to SIMULATE.

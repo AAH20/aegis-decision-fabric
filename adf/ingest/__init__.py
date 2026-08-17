@@ -104,8 +104,18 @@ def from_snort_snortml(event: dict[str, Any]) -> NormalizedAlert:
 def from_splunk_notable(event: dict[str, Any]) -> NormalizedAlert:
     """Beachhead adapter: Splunk ES notable-shaped event."""
     ocsf_ml, ocsf_corr = _ocsf_flags(event)
-    is_corroborated = bool(ocsf_corr)
-    is_ml_only = bool(ocsf_ml) and not is_corroborated
+    blob = _blob(
+        event.get("search_name"),
+        event.get("rule_name"),
+        event.get("title"),
+        event.get("description"),
+        event.get("rule_title"),
+        event.get("orig_raw"),
+        event.get("_raw"),
+    )
+    text_ml, text_corr = _flags_from_text(blob)
+    is_corroborated = bool(ocsf_corr) or text_corr
+    is_ml_only = (bool(ocsf_ml) or text_ml) and not is_corroborated
     if is_corroborated:
         signal = SignalClass.COMPOSITE
     elif is_ml_only:

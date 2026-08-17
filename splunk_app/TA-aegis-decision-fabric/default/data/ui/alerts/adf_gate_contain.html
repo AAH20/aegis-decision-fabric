@@ -1,0 +1,35 @@
+<form>
+  <fieldset>
+    <div class="control-group">
+      <label class="control-label">ADF URL</label>
+      <div class="controls">
+        <input type="text" name="action.adf_gate_contain.param.adf_url" placeholder="http://127.0.0.1:8080" />
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="control-label">Adapter</label>
+      <div class="controls">
+        <input type="text" name="action.adf_gate_contain.param.adapter" placeholder="splunk" />
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="control-label">Contain tool</label>
+      <div class="controls">
+        <input type="text" name="action.adf_gate_contain.param.tool" placeholder="block_ip" />
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="control-label">Mode</label>
+      <div class="controls">
+        <input type="text" name="action.adf_gate_contain.param.mode" placeholder="simulate" />
+        <span class="help-block">simulate (default). allow requires prove token and is still denied on ML-only.</span>
+      </div>
+    </div>
+    <div class="control-group">
+      <label class="control-label">Prove token</label>
+      <div class="controls">
+        <input type="password" name="action.adf_gate_contain.param.prove_token" />
+      </div>
+    </div>
+  </fieldset>
+</form>

@@ -1,0 +1,6 @@
+<nav>
+  <view name="search" default="true" />
+  <view name="alerts" />
+  <view name="reports" />
+  <a href="https://a2zsoc.com/consultation">Continuous Trust / consultation</a>
+</nav>

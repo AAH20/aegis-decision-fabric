@@ -38,8 +38,7 @@ These open contributions encode the same dual-signal doctrine ADF consumes in pr
 | Elastic detection-rules | https://github.com/elastic/detection-rules/pull/6662 |
 | OCSF schema | https://github.com/ocsf/ocsf-schema/pull/1732 |
 | OpenCTI connector | https://github.com/OpenCTI-Platform/connectors/pull/7298 |
-| Azure Sentinel / Firepower analytics | https://github.com/Azure/Azure-Sentinel/pull/14925 |
-| Azure Sentinel BlockIP Gate/Prove | https://github.com/Azure/Azure-Sentinel/pull/14926 |
+| Azure Sentinel / Firepower analytics + Gate/Prove BlockIP | https://github.com/Azure/Azure-Sentinel/pull/14925 |
 | Splunk SOAR dual-signal gate CF | https://github.com/phantomcyber/playbooks/pull/239 |
 | Security Copilot plugin | https://github.com/Azure/Security-Copilot/pull/223 |
 
@@ -91,6 +90,18 @@ docker run --rm -p 8080:8080 \
   aegis-decision-fabric
 ```
 
+## Splunk ES Gate/Prove TA (beachhead runtime)
+
+Installable app at `splunk_app/TA-aegis-decision-fabric`. Custom alert action **ADF Gate/Prove Contain** posts notables to this fabric (`/v1/decide` then `/v1/contain`). Default **SIMULATE**. ML-only **DENY**. That is the Splunk ES cost-avoidance plane: notables do not ungated-block on SnortML GID 411.
+
+```bash
+make package-splunk   # artifacts/TA-aegis-decision-fabric.tar.gz
+# copy into $SPLUNK_HOME/etc/apps/ and restart Splunk
+| sendalert adf_gate_contain param.adf_url="http://adf.internal:8080" param.mode="simulate"
+```
+
+Paid SKU remains [Continuous Trust / consultation](https://a2zsoc.com/consultation) — not unpaid Splunk R&D.
+
 ## Pipeline
 
 ```
@@ -126,6 +137,7 @@ adf/
   cost/         ICP cost-avoidance sketch
   feedback/     Talos FP/TP packs
   bench/        public fixture metrics
+splunk_app/     Splunk ES TA (alert action → ADF HTTP)
 openapi.yaml    HTTP contract
 Dockerfile      air-gapped-friendly image
 fixtures/       beachhead + OCSF corpus
